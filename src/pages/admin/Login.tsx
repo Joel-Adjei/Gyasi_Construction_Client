@@ -4,16 +4,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
-import {
-  HardHat,
-  Eye,
-  EyeOff,
-  Lock,
-  User,
-  ShieldCheck,
-  ArrowRight,
-  Loader2,
-} from "lucide-react";
+import logo from "@/assets/logo.png";
+import { HardHat, Eye, EyeOff, Lock, User, ShieldCheck, ArrowRight, Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 
@@ -47,7 +39,9 @@ export default function AdminLogin() {
       navigate(from, { replace: true });
     } catch {
       setError("password", { message: "Invalid username or password" });
-      toast.error("Authentication failed", { description: "Check your credentials and try again." });
+      toast.error("Authentication failed", {
+        description: "Check your credentials and try again.",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -58,7 +52,10 @@ export default function AdminLogin() {
       {/* Left panel — branding */}
       <div
         className="hidden lg:flex lg:w-[55%] relative flex-col justify-between p-12 overflow-hidden"
-        style={{ background: "linear-gradient(145deg, oklch(0.14 0.04 260), oklch(0.20 0.04 265), oklch(0.16 0.05 260))" }}
+        style={{
+          background:
+            "linear-gradient(145deg, oklch(0.14 0.04 260), oklch(0.20 0.04 265), oklch(0.16 0.05 260))",
+        }}
       >
         {/* Geometric accent shapes */}
         <div
@@ -86,15 +83,12 @@ export default function AdminLogin() {
 
         {/* Logo */}
         <div className="relative flex items-center gap-3">
-          <div
-            className="h-11 w-11 rounded-xl flex items-center justify-center shadow-lg"
-            style={{ background: "linear-gradient(135deg, oklch(0.78 0.17 65), oklch(0.7 0.19 45))" }}
-          >
-            <HardHat className="h-6 w-6 text-white" strokeWidth={2.5} />
+          <div className="h-11 w-11 rounded-xl flex items-center justify-center shadow-lg">
+            <img src={logo} className="object-contain" />
           </div>
           <div>
             <div className="font-display font-bold text-xl text-white tracking-tight">
-              STEELCORE<span style={{ color: "oklch(0.78 0.17 65)" }}>.</span>
+              Gyasi <span style={{ color: "oklch(0.78 0.17 65)" }}>Construction</span>
             </div>
             <div className="text-xs font-medium" style={{ color: "oklch(0.65 0.02 260)" }}>
               Admin Portal
@@ -117,12 +111,18 @@ export default function AdminLogin() {
               Secure Access
             </div>
             <h1 className="font-display font-bold text-4xl leading-tight text-white">
-              Manage Your<br />
-              <span style={{ color: "oklch(0.78 0.17 65)" }}>Construction</span><br />
+              Manage Your
+              <br />
+              <span style={{ color: "oklch(0.78 0.17 65)" }}>Construction</span>
+              <br />
               Business
             </h1>
-            <p className="text-base leading-relaxed max-w-sm" style={{ color: "oklch(0.65 0.02 260)" }}>
-              Control services, review client messages, and track your business performance — all from one place.
+            <p
+              className="text-base leading-relaxed max-w-sm"
+              style={{ color: "oklch(0.65 0.02 260)" }}
+            >
+              Control services, review client messages, and track your business performance — all
+              from one place.
             </p>
           </div>
 
@@ -163,14 +163,11 @@ export default function AdminLogin() {
       <div className="flex-1 flex flex-col items-center justify-center p-8 bg-background">
         {/* Mobile logo */}
         <div className="flex lg:hidden items-center gap-2.5 mb-10">
-          <div
-            className="h-10 w-10 rounded-xl flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg, oklch(0.78 0.17 65), oklch(0.7 0.19 45))" }}
-          >
-            <HardHat className="h-5 w-5 text-white" strokeWidth={2.5} />
+          <div className="h-10 w-10 rounded-xl flex items-center justify-center">
+            <img src={logo} className="w-6 object-contain" />
           </div>
           <span className="font-display font-bold text-xl text-foreground">
-            STEELCORE<span className="text-accent">.</span>
+            Gyasi <span className="text-accent">Constrution</span>
           </span>
         </div>
 
@@ -204,7 +201,7 @@ export default function AdminLogin() {
                     "focus:border-accent focus:ring-2 focus:ring-accent/20",
                     errors.username
                       ? "border-destructive focus:border-destructive focus:ring-destructive/20"
-                      : "border-input hover:border-accent/50"
+                      : "border-input hover:border-accent/50",
                   )}
                 />
               </div>
@@ -232,7 +229,7 @@ export default function AdminLogin() {
                     "focus:border-accent focus:ring-2 focus:ring-accent/20",
                     errors.password
                       ? "border-destructive focus:border-destructive focus:ring-destructive/20"
-                      : "border-input hover:border-accent/50"
+                      : "border-input hover:border-accent/50",
                   )}
                 />
                 <button
@@ -257,11 +254,11 @@ export default function AdminLogin() {
                 "w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg",
                 "font-semibold text-sm text-primary-foreground transition-all",
                 "shadow-md hover:shadow-lg active:scale-[0.98]",
-                isSubmitting
-                  ? "opacity-70 cursor-not-allowed"
-                  : "hover:brightness-110",
+                isSubmitting ? "opacity-70 cursor-not-allowed" : "hover:brightness-110",
               )}
-              style={{ background: "linear-gradient(135deg, oklch(0.22 0.04 260), oklch(0.28 0.05 255))" }}
+              style={{
+                background: "linear-gradient(135deg, oklch(0.22 0.04 260), oklch(0.28 0.05 255))",
+              }}
             >
               {isSubmitting ? (
                 <>
@@ -291,13 +288,24 @@ export default function AdminLogin() {
             />
             <div className="space-y-0.5" style={{ color: "oklch(0.45 0.02 260)" }}>
               <p className="font-semibold text-foreground">Default credentials</p>
-              <p>Username: <span className="font-mono font-semibold text-foreground">admin</span></p>
-              <p>Password: <span className="font-mono font-semibold text-foreground">steelcore2024</span></p>
+              <p>
+                Username: <span className="font-mono font-semibold text-foreground">admin</span>
+              </p>
+              <p>
+                Password:{" "}
+                <span className="font-mono font-semibold text-foreground">steelcore2024</span>
+              </p>
             </div>
           </div>
 
           <p className="text-center text-xs text-muted-foreground">
-            &larr; <a href="/" className="underline underline-offset-2 hover:text-foreground transition-colors">Back to website</a>
+            &larr;{" "}
+            <a
+              href="/"
+              className="underline underline-offset-2 hover:text-foreground transition-colors"
+            >
+              Back to website
+            </a>
           </p>
         </div>
       </div>

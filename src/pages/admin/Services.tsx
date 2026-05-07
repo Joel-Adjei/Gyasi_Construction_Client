@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Plus, Pencil, Trash2, Star, X, Upload, ImagePlus, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Star, X, Upload, ImagePlus, Loader2, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,8 +23,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { getServices, saveServices, getSettings, uploadToCloudinary, DEFAULT_SERVICES } from "@/lib/store";
-import type { Service } from "@/lib/type";
+import { getServices, saveServices, getSettings, uploadToCloudinary } from "@/lib/store";
+import type { Service, ServiceProcess } from "@/lib/type";
 
 const MAX_IMAGES = 3;
 
@@ -118,6 +118,13 @@ export default function AdminServices() {
       id: "",
       title: "",
       desc: "",
+      longDesc: "",
+      category: "",
+      startingPrice: "",
+      duration: "",
+      projectsCompleted: 0,
+      features: [],
+      process: [],
       date: new Date().toISOString().slice(0, 10),
       featured: false,
       images: [],
@@ -126,20 +133,27 @@ export default function AdminServices() {
   };
 
   const startEdit = (s: Service) => {
-    setEditing({ ...s });
+    setEditing({
+      ...s,
+      longDesc: s.longDesc ?? "",
+      category: s.category ?? "",
+      startingPrice: s.startingPrice ?? "",
+      duration: s.duration ?? "",
+      projectsCompleted: s.projectsCompleted ?? 0,
+      features: s.features ?? [],
+      process: s.process ?? [],
+    });
     setOpen(true);
   };
 
   const handleImageUpload = async (file: File, slot: number) => {
     if (!editing) return;
-
     if (!cloudinaryReady) {
       toast.error("Cloudinary not configured", {
         description: "Go to Settings → Cloudinary Integration to add your credentials.",
       });
       return;
     }
-
     setUploadingSlot(slot);
     try {
       const url = await uploadToCloudinary(
@@ -165,14 +179,48 @@ export default function AdminServices() {
     setEditing({ ...editing, images: imgs });
   };
 
+  const addFeature = () =>
+    setEditing((e) => e && { ...e, features: [...(e.features ?? []), ""] });
+
+  const updateFeature = (i: number, val: string) =>
+    setEditing((e) => {
+      if (!e) return e;
+      const features = [...(e.features ?? [])];
+      features[i] = val;
+      return { ...e, features };
+    });
+
+  const removeFeature = (i: number) =>
+    setEditing((e) => e && { ...e, features: (e.features ?? []).filter((_, j) => j !== i) });
+
+  const addStep = () =>
+    setEditing((e) => e && { ...e, process: [...(e.process ?? []), { title: "", desc: "" }] });
+
+  const updateStep = (i: number, patch: Partial<ServiceProcess>) =>
+    setEditing((e) => {
+      if (!e) return e;
+      const process = [...(e.process ?? [])];
+      process[i] = { ...process[i], ...patch };
+      return { ...e, process };
+    });
+
+  const removeStep = (i: number) =>
+    setEditing((e) => e && { ...e, process: (e.process ?? []).filter((_, j) => j !== i) });
+
   const save = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!editing) return;
-    if (editing.id) {
-      persist(services.map((s) => (s.id === editing.id ? editing : s)));
+    const cleaned: Service = {
+      ...editing,
+      features: (editing.features ?? []).filter((f) => f.trim()),
+      process: (editing.process ?? []).filter((p) => p.title.trim()),
+      projectsCompleted: Number(editing.projectsCompleted) || 0,
+    };
+    if (cleaned.id) {
+      persist(services.map((s) => (s.id === cleaned.id ? cleaned : s)));
       toast.success("Service updated");
     } else {
-      persist([{ ...editing, id: crypto.randomUUID() }, ...services]);
+      persist([{ ...cleaned, id: crypto.randomUUID() }, ...services]);
       toast.success("Service created");
     }
     setOpen(false);
@@ -227,7 +275,12 @@ export default function AdminServices() {
                           <img src={s.images[0]} alt="" className="w-full h-full object-cover" />
                         )}
                       </div>
-                      <div className="font-medium">{s.title}</div>
+                      <div>
+                        <div className="font-medium">{s.title}</div>
+                        {s.category && (
+                          <div className="text-xs text-muted-foreground">{s.category}</div>
+                        )}
+                      </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 text-muted-foreground hidden md:table-cell max-w-md truncate">
@@ -278,6 +331,7 @@ export default function AdminServices() {
 
           {editing && (
             <form onSubmit={save} className="space-y-6">
+
               {/* Images */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -293,7 +347,6 @@ export default function AdminServices() {
                     </span>
                   )}
                 </div>
-
                 <div className="grid grid-cols-3 gap-3">
                   {slots.map((_, i) => (
                     <ImageSlot
@@ -306,39 +359,194 @@ export default function AdminServices() {
                     />
                   ))}
                 </div>
-
                 {(editing.images?.length ?? 0) > 0 && (
                   <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                     <Upload className="h-3 w-3" />
-                    {editing.images.length} of {MAX_IMAGES} image{editing.images.length !== 1 ? "s" : ""} added
+                    {editing.images.length} of {MAX_IMAGES} image
+                    {editing.images.length !== 1 ? "s" : ""} added
                   </p>
                 )}
               </div>
 
-              {/* Title */}
-              <div className="space-y-2">
-                <Label htmlFor="title">Title</Label>
-                <Input
-                  id="title"
-                  required
-                  placeholder="e.g. Commercial Construction"
-                  value={editing.title}
-                  onChange={(e) => setEditing({ ...editing, title: e.target.value })}
-                />
+              {/* Basic info */}
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="title">Title *</Label>
+                  <Input
+                    id="title"
+                    required
+                    placeholder="e.g. Commercial Construction"
+                    value={editing.title}
+                    onChange={(e) => setEditing({ ...editing, title: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="category">Category</Label>
+                  <Input
+                    id="category"
+                    placeholder="e.g. Commercial, Industrial"
+                    value={editing.category ?? ""}
+                    onChange={(e) => setEditing({ ...editing, category: e.target.value })}
+                  />
+                </div>
               </div>
 
-              {/* Description */}
+              {/* Short description */}
               <div className="space-y-2">
-                <Label htmlFor="desc">Description</Label>
+                <Label htmlFor="desc">Short description *</Label>
                 <Textarea
                   id="desc"
                   required
-                  rows={3}
+                  rows={2}
                   className="resize-none"
-                  placeholder="Brief description of this service…"
+                  placeholder="One or two sentences shown on the services listing…"
                   value={editing.desc}
                   onChange={(e) => setEditing({ ...editing, desc: e.target.value })}
                 />
+              </div>
+
+              {/* Long description */}
+              <div className="space-y-2">
+                <Label htmlFor="longDesc">Full description</Label>
+                <Textarea
+                  id="longDesc"
+                  rows={5}
+                  className="resize-none"
+                  placeholder="Detailed description shown on the service detail page…"
+                  value={editing.longDesc ?? ""}
+                  onChange={(e) => setEditing({ ...editing, longDesc: e.target.value })}
+                />
+              </div>
+
+              {/* At-a-glance stats */}
+              <div className="grid sm:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="startingPrice">Starting price</Label>
+                  <Input
+                    id="startingPrice"
+                    placeholder="e.g. From $500K"
+                    value={editing.startingPrice ?? ""}
+                    onChange={(e) => setEditing({ ...editing, startingPrice: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="duration">Typical duration</Label>
+                  <Input
+                    id="duration"
+                    placeholder="e.g. 6–18 months"
+                    value={editing.duration ?? ""}
+                    onChange={(e) => setEditing({ ...editing, duration: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="projectsCompleted">Projects completed</Label>
+                  <Input
+                    id="projectsCompleted"
+                    type="number"
+                    min={0}
+                    placeholder="e.g. 47"
+                    value={editing.projectsCompleted || ""}
+                    onChange={(e) =>
+                      setEditing({ ...editing, projectsCompleted: Number(e.target.value) })
+                    }
+                  />
+                </div>
+              </div>
+
+              {/* Key features */}
+              <div className="space-y-3">
+                <Label className="text-sm font-semibold">
+                  Key features
+                  <span className="ml-1.5 text-xs text-muted-foreground font-normal">
+                    (bullet list on the detail page)
+                  </span>
+                </Label>
+                <div className="space-y-2">
+                  {(editing.features ?? []).map((f, i) => (
+                    <div key={i} className="flex gap-2">
+                      <Input
+                        value={f}
+                        placeholder={`Feature ${i + 1}`}
+                        onChange={(e) => updateFeature(i, e.target.value)}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeFeature(i)}
+                        className="shrink-0 text-muted-foreground hover:text-destructive"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={addFeature}
+                    className="mt-1"
+                  >
+                    <Plus className="h-3.5 w-3.5 mr-1" /> Add feature
+                  </Button>
+                </div>
+              </div>
+
+              {/* Process steps */}
+              <div className="space-y-3">
+                <Label className="text-sm font-semibold">
+                  Process steps
+                  <span className="ml-1.5 text-xs text-muted-foreground font-normal">
+                    ("How we work" section on the detail page)
+                  </span>
+                </Label>
+                <div className="space-y-3">
+                  {(editing.process ?? []).map((step, i) => (
+                    <div
+                      key={i}
+                      className="p-4 rounded-xl border border-border bg-muted/30 space-y-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <GripVertical className="h-4 w-4 text-muted-foreground/40" />
+                          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            Step {i + 1}
+                          </span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                          onClick={() => removeStep(i)}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                      <Input
+                        placeholder="Step title"
+                        value={step.title}
+                        onChange={(e) => updateStep(i, { title: e.target.value })}
+                      />
+                      <Textarea
+                        placeholder="Step description"
+                        rows={2}
+                        className="resize-none"
+                        value={step.desc}
+                        onChange={(e) => updateStep(i, { desc: e.target.value })}
+                      />
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={addStep}
+                    className="mt-1"
+                  >
+                    <Plus className="h-3.5 w-3.5 mr-1" /> Add step
+                  </Button>
+                </div>
               </div>
 
               {/* Featured toggle */}
