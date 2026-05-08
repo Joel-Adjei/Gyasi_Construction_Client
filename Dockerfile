@@ -14,8 +14,8 @@ FROM nginx:alpine
 
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/templates/default.conf.template
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
 
-# Railway injects $PORT at runtime; envsubst writes it into the nginx config
-CMD ["/bin/sh", "-c", \
-  "envsubst '$PORT' < /etc/nginx/templates/default.conf.template \
-   > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
+CMD ["/bin/sh", "/start.sh"]
+ 
