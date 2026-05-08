@@ -1,6 +1,6 @@
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { Award, Target, Eye, Users } from "lucide-react";
-import aboutImg from "@/assets/img_01.png";
+import aboutTeamImg from "@/assets/about-team.jpg";
 import headerImg from "@/assets/header_bg.jpg";
 
 const milestones = [
@@ -74,47 +74,76 @@ export default function AboutPage() {
       </section>
 
       <section className="py-24 bg-background">
-        <div className="container mx-auto px-6 lg:px-10 grid md:grid-cols-2 gap-16 items-center">
-          <div className="space-y-10">
-            <div>
-              <div className="flex items-center gap-3 mb-3">
-                <Target className="h-6 w-6 text-accent" />
-                <h3 className="font-display font-bold text-2xl">Our Mission</h3>
-              </div>
-              <p className="text-muted-foreground leading-relaxed">
-                To deliver construction projects that exceed structural, financial, and ethical
-                expectations — building trust as deliberately as we build steel and concrete.
-              </p>
+        <div className="container mx-auto px-6 lg:px-10">
+          <div className="text-center max-w-2xl mx-auto mb-16">
+            <div className="text-accent font-semibold text-sm uppercase tracking-widest mb-3">
+              Who We Are
             </div>
-            <div>
-              <div className="flex items-center gap-3 mb-3">
-                <Eye className="h-6 w-6 text-accent" />
-                <h3 className="font-display font-bold text-2xl">Our Vision</h3>
-              </div>
-              <p className="text-muted-foreground leading-relaxed">
-                To be the construction partner of choice for the projects that shape cities — from
-                sustainable towers to resilient infrastructure.
-              </p>
-            </div>
-            <div>
-              <div className="flex items-center gap-3 mb-3">
-                <Award className="h-6 w-6 text-accent" />
-                <h3 className="font-display font-bold text-2xl">Our Values</h3>
-              </div>
-              <p className="text-muted-foreground leading-relaxed">
-                Safety first, always. Transparent communication. Quality without compromise. Respect
-                for every craftsperson on site.
-              </p>
-            </div>
+            <h2 className="font-display font-bold text-4xl md:text-5xl">
+              Built on purpose. Driven by principle.
+            </h2>
           </div>
 
-          <div className="">
-            <img
-              src={aboutImg}
-              alt="Engineer on site"
-              className="w-60 object-contain"
-              loading="lazy"
-            />
+          <div className="grid md:grid-cols-2 gap-16 items-center">
+            <div className="space-y-5">
+              <div className="bg-card border border-border rounded-xl p-6 flex gap-5 hover:shadow-lg transition-shadow">
+                <div className="h-12 w-12 shrink-0 bg-accent/10 rounded-lg flex items-center justify-center">
+                  <Target className="h-6 w-6 text-accent" />
+                </div>
+                <div>
+                  <h3 className="font-display font-bold text-xl mb-2">Our Mission</h3>
+                  <p className="text-muted-foreground leading-relaxed text-sm">
+                    To deliver construction projects that exceed structural, financial, and ethical
+                    expectations — building trust as deliberately as we build steel and concrete.
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-card border border-border rounded-xl p-6 flex gap-5 hover:shadow-lg transition-shadow">
+                <div className="h-12 w-12 shrink-0 bg-accent/10 rounded-lg flex items-center justify-center">
+                  <Eye className="h-6 w-6 text-accent" />
+                </div>
+                <div>
+                  <h3 className="font-display font-bold text-xl mb-2">Our Vision</h3>
+                  <p className="text-muted-foreground leading-relaxed text-sm">
+                    To be the construction partner of choice for the projects that shape cities — from
+                    sustainable towers to resilient infrastructure.
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-card border border-border rounded-xl p-6 flex gap-5 hover:shadow-lg transition-shadow">
+                <div className="h-12 w-12 shrink-0 bg-accent/10 rounded-lg flex items-center justify-center">
+                  <Award className="h-6 w-6 text-accent" />
+                </div>
+                <div>
+                  <h3 className="font-display font-bold text-xl mb-2">Our Values</h3>
+                  <p className="text-muted-foreground leading-relaxed text-sm">
+                    Safety first, always. Transparent communication. Quality without compromise. Respect
+                    for every craftsperson on site.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="relative">
+              <div className="absolute -inset-3 bg-accent/5 rounded-2xl" />
+              <img
+                src={aboutTeamImg}
+                alt="Steelcore team on site"
+                className="relative rounded-2xl w-full h-120 object-cover shadow-lg"
+                loading="lazy"
+              />
+              <div className="absolute bottom-6 left-6 right-6 bg-primary/90 backdrop-blur-sm rounded-xl p-4 text-primary-foreground">
+                <div className="flex items-center gap-3">
+                  <Users className="h-5 w-5 text-accent shrink-0" />
+                  <div>
+                    <p className="font-semibold text-sm">25+ Years of Excellence</p>
+                    <p className="text-xs text-primary-foreground/70">Trusted by 480+ projects worldwide</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
