@@ -1,20 +1,21 @@
-Step 1: Build the Vite React app
-FROM node:18 AS build
+# Stage 1: Build with Bun
+FROM oven/bun:1 AS build
 
 WORKDIR /app
 
-COPY package.json package-lock.json ./
-RUN npm install
+COPY package.json bun.lockb ./
+RUN bun install --frozen-lockfile
 
 COPY . .
-RUN npm run build
+RUN bun run build
 
-Step 2: Serve the production build with nginx
+# Stage 2: Serve with nginx
 FROM nginx:alpine
 
-Copy Vite's build output (dist folder) to nginx web root
 COPY --from=build /app/dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/templates/default.conf.template
 
-EXPOSE 80
-
-CMD ["nginx", "-g", "daemon off;"]
+# Railway injects $PORT at runtime; envsubst writes it into the nginx config
+CMD ["/bin/sh", "-c", \
+  "envsubst '$PORT' < /etc/nginx/templates/default.conf.template \
+   > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
