@@ -14,8 +14,20 @@ import Messages from "@/pages/admin/Messages";
 import AdminServices from "@/pages/admin/Services";
 import AdminSettings from "@/pages/admin/Settings";
 import ServiceDetail from "@/pages/ServiceDetail";
+import { useSettings } from "./hooks/useSettings";
+import useContactStore from "./store/ContactStore";
+import { useEffect } from "react";
 
 export default function App() {
+  const { data, isLoading } = useSettings();
+  const setContact = useContactStore((s) => s.setData);
+
+  useEffect(() => {
+    if (!isLoading && data) {
+      setContact(data);
+    }
+  }, [isLoading, data]);
+
   return (
     <AuthProvider>
       <BrowserRouter>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -13,12 +13,13 @@ import {
   Save,
   CheckCircle2,
   AlertTriangle,
+  Loader2,
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { getSettings, saveSettings } from "@/lib/store";
+import { useSettings, useUpdateSettings } from "@/hooks/useSettings";
 import type { SiteSettings } from "@/lib/type";
 
 const schema = z.object({
@@ -47,7 +48,9 @@ function FieldGroup({
         <Icon className="h-4.5 w-4.5 text-accent" style={{ height: "1.125rem", width: "1.125rem" }} />
       </div>
       <div className="flex-1 space-y-3">
-        <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{label}</p>
+        <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+          {label}
+        </p>
         {children}
       </div>
     </div>
@@ -55,56 +58,86 @@ function FieldGroup({
 }
 
 export default function AdminSettings() {
-  const stored = getSettings();
-  const [saved, setSaved] = useState(false);
+  const { data: settings, isLoading } = useSettings();
+  const { mutate: updateSettings, isPending, isSuccess } = useUpdateSettings();
 
   const {
     register,
     handleSubmit,
     watch,
+    reset,
     formState: { errors, isDirty },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: stored,
+    defaultValues: {
+      companyName: "",
+      contactEmail: "",
+      contactPhone: "",
+      contactAddress: "",
+      cloudinaryCloudName: "",
+      cloudinaryUploadPreset: "",
+    },
   });
+
+  useEffect(() => {
+    if (settings) reset(settings as FormData);
+  }, [settings, reset]);
 
   const cloudName = watch("cloudinaryCloudName");
   const uploadPreset = watch("cloudinaryUploadPreset");
-  const cloudinaryConfigured = cloudName.trim() && uploadPreset.trim();
+  const cloudinaryConfigured = cloudName?.trim() && uploadPreset?.trim();
 
   const onSubmit = (data: FormData) => {
-    saveSettings(data as SiteSettings);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
-    toast.success("Settings saved", { description: "Changes are now live across the site." });
+    updateSettings(data as Partial<SiteSettings>, {
+      onSuccess: () =>
+        toast.success("Settings saved", { description: "Changes are now live across the site." }),
+      onError: () =>
+        toast.error("Failed to save settings", { description: "Please try again." }),
+    });
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div>
-      <header className="h-20 border-b border-border bg-card flex items-center justify-between px-8">
+      <header className="h-16 md:h-20 border-b border-border bg-card flex items-center justify-between px-4 sm:px-8">
         <div>
-          <h1 className="font-display font-bold text-xl">Settings</h1>
-          <p className="text-xs text-muted-foreground">Manage site configuration and integrations</p>
+          <h1 className="font-display font-bold text-lg md:text-xl">Settings</h1>
+          <p className="text-xs text-muted-foreground hidden sm:block">Manage site configuration and integrations</p>
         </div>
         <Button
           form="settings-form"
           type="submit"
-          disabled={!isDirty && !saved}
+          disabled={(!isDirty && !isSuccess) || isPending}
           className="bg-accent text-accent-foreground hover:bg-accent/90 font-semibold gap-2 disabled:opacity-50"
+          size="sm"
         >
-          {saved ? (
+          {isPending ? (
             <>
-              <CheckCircle2 className="h-4 w-4" /> Saved
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span className="hidden sm:inline">Saving…</span>
+            </>
+          ) : isSuccess && !isDirty ? (
+            <>
+              <CheckCircle2 className="h-4 w-4" />
+              <span className="hidden sm:inline">Saved</span>
             </>
           ) : (
             <>
-              <Save className="h-4 w-4" /> Save changes
+              <Save className="h-4 w-4" />
+              <span className="hidden sm:inline">Save changes</span>
             </>
           )}
         </Button>
       </header>
 
-      <div className="p-8 max-w-3xl space-y-8">
+      <div className="p-4 sm:p-8 max-w-3xl space-y-6 sm:space-y-8">
         <form id="settings-form" onSubmit={handleSubmit(onSubmit)} className="space-y-8">
           {/* Company */}
           <section className="space-y-4">
@@ -172,7 +205,7 @@ export default function AdminSettings() {
 
           {/* Cloudinary */}
           <section className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
               <h2 className="font-display font-bold text-lg">Cloudinary Integration</h2>
               {cloudinaryConfigured ? (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-500/10 text-green-600 border border-green-500/20">
@@ -199,9 +232,10 @@ export default function AdminSettings() {
                 <p className="font-semibold text-foreground text-sm">Image uploads via Cloudinary</p>
                 <p>
                   Create a free account at{" "}
-                  <span className="font-mono font-semibold text-foreground">cloudinary.com</span>, then
-                  create an <span className="font-semibold text-foreground">unsigned upload preset</span>{" "}
-                  under Settings → Upload. Paste your Cloud Name and preset name below.
+                  <span className="font-mono font-semibold text-foreground">cloudinary.com</span>,
+                  then create an{" "}
+                  <span className="font-semibold text-foreground">unsigned upload preset</span> under
+                  Settings → Upload. Paste your Cloud Name and preset name below.
                 </p>
               </div>
             </div>

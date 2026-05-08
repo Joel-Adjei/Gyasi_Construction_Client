@@ -1,6 +1,6 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { SiteLayout } from "@/components/layout/SiteLayout";
-import { getServices } from "@/lib/store";
+import { useService } from "@/hooks/useServices";
 import {
   ChevronLeft,
   ArrowRight,
@@ -9,6 +9,7 @@ import {
   DollarSign,
   BarChart3,
   ImageIcon,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect } from "react";
@@ -16,13 +17,23 @@ import { useEffect } from "react";
 export default function ServiceDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const service = getServices().find((s) => s.id === id);
+  const { data: service, isLoading, isError } = useService(id ?? "");
 
   useEffect(() => {
-    if (!service) navigate("/services", { replace: true });
-  }, [service, navigate]);
+    if (!isLoading && !service) navigate("/services", { replace: true });
+  }, [isLoading, service, navigate]);
 
-  if (!service) return null;
+  if (isLoading) {
+    return (
+      <SiteLayout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </SiteLayout>
+    );
+  }
+
+  if (isError || !service) return null;
 
   const hasStats = service.startingPrice || service.duration || service.projectsCompleted;
   const hasFeatures = service.features && service.features.length > 0;
@@ -45,7 +56,6 @@ export default function ServiceDetailPage() {
         )}
 
         <div className="relative container mx-auto px-6 lg:px-10">
-          {/* Breadcrumb */}
           <Link
             to="/services"
             className="inline-flex items-center gap-1.5 text-sm text-primary-foreground/70 hover:text-primary-foreground transition-colors mb-8"
@@ -68,7 +78,6 @@ export default function ServiceDetailPage() {
               {service.desc}
             </p>
 
-            {/* Stat pills */}
             {hasStats && (
               <div className="mt-8 flex flex-wrap gap-4">
                 {service.startingPrice && (
@@ -101,9 +110,7 @@ export default function ServiceDetailPage() {
       <section className="py-20 bg-background">
         <div className="container mx-auto px-6 lg:px-10 max-w-5xl">
           <div className="grid lg:grid-cols-3 gap-14">
-            {/* Main column */}
             <div className="lg:col-span-2 space-y-14">
-              {/* Long description */}
               {service.longDesc && (
                 <div>
                   <h2 className="font-display font-bold text-2xl mb-5">About this service</h2>
@@ -113,7 +120,6 @@ export default function ServiceDetailPage() {
                 </div>
               )}
 
-              {/* Process steps */}
               {hasProcess && (
                 <div>
                   <h2 className="font-display font-bold text-2xl mb-7">How we work</h2>
@@ -135,7 +141,6 @@ export default function ServiceDetailPage() {
                 </div>
               )}
 
-              {/* Image gallery */}
               {extraImages.length > 0 && (
                 <div>
                   <h2 className="font-display font-bold text-2xl mb-6">Gallery</h2>
@@ -157,16 +162,13 @@ export default function ServiceDetailPage() {
               )}
             </div>
 
-            {/* Sidebar */}
             <div className="space-y-6">
-              {/* Placeholder when no hero image */}
               {!service.images?.[0] && (
                 <div className="aspect-4/3 rounded-xl border border-border bg-muted flex items-center justify-center text-muted-foreground">
                   <ImageIcon className="h-10 w-10" />
                 </div>
               )}
 
-              {/* Features card */}
               {hasFeatures && (
                 <div className="bg-card border border-border rounded-xl p-6">
                   <h3 className="font-display font-semibold text-base mb-4">What's included</h3>
@@ -181,7 +183,6 @@ export default function ServiceDetailPage() {
                 </div>
               )}
 
-              {/* Quick stats card */}
               {hasStats && (
                 <div className="bg-card border border-border rounded-xl p-6 space-y-4">
                   <h3 className="font-display font-semibold text-base">At a glance</h3>
@@ -206,7 +207,6 @@ export default function ServiceDetailPage() {
                 </div>
               )}
 
-              {/* CTA card */}
               <div className="bg-primary text-primary-foreground rounded-xl p-6 space-y-3">
                 <h3 className="font-display font-semibold text-base">Ready to get started?</h3>
                 <p className="text-sm text-primary-foreground/75 leading-relaxed">
@@ -226,7 +226,6 @@ export default function ServiceDetailPage() {
         </div>
       </section>
 
-      {/* Bottom CTA strip */}
       <section className="py-20 bg-muted/40 border-t border-border">
         <div className="container mx-auto px-6 lg:px-10 text-center max-w-2xl">
           <h2 className="font-display font-bold text-3xl md:text-4xl">

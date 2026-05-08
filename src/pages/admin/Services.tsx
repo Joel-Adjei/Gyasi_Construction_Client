@@ -1,5 +1,15 @@
 import { useState, useRef } from "react";
-import { Plus, Pencil, Trash2, Star, X, Upload, ImagePlus, Loader2, GripVertical } from "lucide-react";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Star,
+  X,
+  Upload,
+  ImagePlus,
+  Loader2,
+  GripVertical,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,7 +33,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { getServices, saveServices, getSettings, uploadToCloudinary } from "@/lib/store";
+import {
+  useServices,
+  useCreateService,
+  useUpdateService,
+  useDeleteService,
+} from "@/hooks/useServices";
+import { useSettings } from "@/hooks/useSettings";
+import { uploadToCloudinary } from "@/lib/store";
 import type { Service, ServiceProcess } from "@/lib/type";
 
 const MAX_IMAGES = 3;
@@ -98,24 +115,26 @@ function ImageSlot({
   );
 }
 
+type EditingService = Omit<Service, "id"> & { id?: string };
+
 export default function AdminServices() {
-  const [services, setServices] = useState<Service[]>(() => getServices());
-  const [editing, setEditing] = useState<Service | null>(null);
+  const { data: services = [], isLoading } = useServices();
+  const { data: settings } = useSettings();
+  const { mutate: createService, isPending: creating } = useCreateService();
+  const { mutate: updateService, isPending: updating } = useUpdateService();
+  const { mutate: deleteService } = useDeleteService();
+
+  const [editing, setEditing] = useState<EditingService | null>(null);
   const [open, setOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [uploadingSlot, setUploadingSlot] = useState<number | null>(null);
 
-  const settings = getSettings();
-  const cloudinaryReady = settings.cloudinaryCloudName && settings.cloudinaryUploadPreset;
-
-  const persist = (updated: Service[]) => {
-    setServices(updated);
-    saveServices(updated);
-  };
+  const isSaving = creating || updating;
+  const cloudinaryReady =
+    settings?.cloudinaryCloudName && settings?.cloudinaryUploadPreset;
 
   const startNew = () => {
     setEditing({
-      id: "",
       title: "",
       desc: "",
       longDesc: "",
@@ -158,15 +177,17 @@ export default function AdminServices() {
     try {
       const url = await uploadToCloudinary(
         file,
-        settings.cloudinaryCloudName,
-        settings.cloudinaryUploadPreset,
+        settings!.cloudinaryCloudName,
+        settings!.cloudinaryUploadPreset,
       );
       const imgs = [...(editing.images ?? [])];
       imgs[slot] = url;
       setEditing({ ...editing, images: imgs.filter(Boolean) });
       toast.success("Image uploaded");
     } catch {
-      toast.error("Upload failed", { description: "Check your Cloudinary settings and try again." });
+      toast.error("Upload failed", {
+        description: "Check your Cloudinary settings and try again.",
+      });
     } finally {
       setUploadingSlot(null);
     }
@@ -210,26 +231,42 @@ export default function AdminServices() {
   const save = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!editing) return;
-    const cleaned: Service = {
+
+    const payload = {
       ...editing,
       features: (editing.features ?? []).filter((f) => f.trim()),
       process: (editing.process ?? []).filter((p) => p.title.trim()),
       projectsCompleted: Number(editing.projectsCompleted) || 0,
     };
-    if (cleaned.id) {
-      persist(services.map((s) => (s.id === cleaned.id ? cleaned : s)));
-      toast.success("Service updated");
+
+    if (editing.id) {
+      updateService(
+        { id: editing.id, ...payload },
+        {
+          onSuccess: () => {
+            toast.success("Service updated");
+            setOpen(false);
+          },
+          onError: () => toast.error("Failed to update service"),
+        },
+      );
     } else {
-      persist([{ ...cleaned, id: crypto.randomUUID() }, ...services]);
-      toast.success("Service created");
+      createService(payload, {
+        onSuccess: () => {
+          toast.success("Service created");
+          setOpen(false);
+        },
+        onError: () => toast.error("Failed to create service"),
+      });
     }
-    setOpen(false);
   };
 
   const confirmDelete = () => {
     if (!deleteId) return;
-    persist(services.filter((s) => s.id !== deleteId));
-    toast.success("Service deleted");
+    deleteService(deleteId, {
+      onSuccess: () => toast.success("Service deleted"),
+      onError: () => toast.error("Failed to delete service"),
+    });
     setDeleteId(null);
   };
 
@@ -237,86 +274,101 @@ export default function AdminServices() {
 
   return (
     <div>
-      <header className="h-20 border-b border-border bg-card flex items-center justify-between px-8">
+      <header className="h-16 md:h-20 border-b border-border bg-card flex items-center justify-between px-4 sm:px-8">
         <div>
-          <h1 className="font-display font-bold text-xl">Services</h1>
+          <h1 className="font-display font-bold text-lg md:text-xl">Services</h1>
           <p className="text-xs text-muted-foreground">Manage your service catalog</p>
         </div>
         <Button
           onClick={startNew}
           className="bg-accent text-accent-foreground hover:bg-accent/90 font-semibold"
+          size="sm"
         >
-          <Plus className="h-4 w-4 mr-2" /> Add Service
+          <Plus className="h-4 w-4 sm:mr-2" />
+          <span className="hidden sm:inline">Add Service</span>
         </Button>
       </header>
 
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
         <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50 border-b border-border">
-              <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
-                <th className="px-6 py-4 font-semibold">Service</th>
-                <th className="px-6 py-4 font-semibold hidden md:table-cell">Description</th>
-                <th className="px-6 py-4 font-semibold hidden lg:table-cell">Date</th>
-                <th className="px-6 py-4 font-semibold">Status</th>
-                <th className="px-6 py-4 font-semibold text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {services.map((s) => (
-                <tr
-                  key={s.id}
-                  className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors"
-                >
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-md bg-muted overflow-hidden shrink-0">
-                        {s.images?.[0] && (
-                          <img src={s.images[0]} alt="" className="w-full h-full object-cover" />
-                        )}
-                      </div>
-                      <div>
-                        <div className="font-medium">{s.title}</div>
-                        {s.category && (
-                          <div className="text-xs text-muted-foreground">{s.category}</div>
-                        )}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-muted-foreground hidden md:table-cell max-w-md truncate">
-                    {s.desc}
-                  </td>
-                  <td className="px-6 py-4 text-muted-foreground hidden lg:table-cell">{s.date}</td>
-                  <td className="px-6 py-4">
-                    {s.featured ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-accent/15 text-accent">
-                        <Star className="h-3 w-3 fill-current" /> Featured
-                      </span>
-                    ) : (
-                      <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                        Standard
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex justify-end gap-1">
-                      <Button size="icon" variant="ghost" onClick={() => startEdit(s)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => setDeleteId(s.id)}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </td>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50 border-b border-border">
+                <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
+                  <th className="px-3 sm:px-6 py-3 sm:py-4 font-semibold">Service</th>
+                  <th className="px-3 sm:px-6 py-3 sm:py-4 font-semibold hidden md:table-cell">Description</th>
+                  <th className="px-3 sm:px-6 py-3 sm:py-4 font-semibold hidden lg:table-cell">Date</th>
+                  <th className="px-3 sm:px-6 py-3 sm:py-4 font-semibold hidden xs:table-cell">Status</th>
+                  <th className="px-3 sm:px-6 py-3 sm:py-4 font-semibold text-right">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {services.map((s) => (
+                  <tr
+                    key={s.id}
+                    className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors"
+                  >
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-md bg-muted overflow-hidden shrink-0">
+                          {s.images?.[0] && (
+                            <img src={s.images[0]} alt="" className="w-full h-full object-cover" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="font-medium truncate max-w-[120px] sm:max-w-none">{s.title}</div>
+                          {s.category && (
+                            <div className="text-xs text-muted-foreground truncate">{s.category}</div>
+                          )}
+                          {s.featured ? (
+                            <span className="inline-flex items-center gap-1 mt-0.5 px-1.5 py-0.5 rounded-full text-xs font-medium bg-accent/15 text-accent sm:hidden">
+                              <Star className="h-2.5 w-2.5 fill-current" /> Featured
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 text-muted-foreground hidden md:table-cell max-w-md truncate">
+                      {s.desc}
+                    </td>
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 text-muted-foreground hidden lg:table-cell">
+                      {s.date}
+                    </td>
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 hidden xs:table-cell">
+                      {s.featured ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-accent/15 text-accent">
+                          <Star className="h-3 w-3 fill-current" /> Featured
+                        </span>
+                      ) : (
+                        <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                          Standard
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
+                      <div className="flex justify-end gap-1">
+                        <Button size="icon" variant="ghost" onClick={() => startEdit(s)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => setDeleteId(s.id)}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
 
@@ -331,7 +383,6 @@ export default function AdminServices() {
 
           {editing && (
             <form onSubmit={save} className="space-y-6">
-
               {/* Images */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -391,7 +442,6 @@ export default function AdminServices() {
                 </div>
               </div>
 
-              {/* Short description */}
               <div className="space-y-2">
                 <Label htmlFor="desc">Short description *</Label>
                 <Textarea
@@ -405,7 +455,6 @@ export default function AdminServices() {
                 />
               </div>
 
-              {/* Long description */}
               <div className="space-y-2">
                 <Label htmlFor="longDesc">Full description</Label>
                 <Textarea
@@ -418,7 +467,6 @@ export default function AdminServices() {
                 />
               </div>
 
-              {/* At-a-glance stats */}
               <div className="grid sm:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="startingPrice">Starting price</Label>
@@ -570,10 +618,19 @@ export default function AdminServices() {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={uploadingSlot !== null}
+                  disabled={uploadingSlot !== null || isSaving}
                   className="bg-accent text-accent-foreground hover:bg-accent/90"
                 >
-                  {editing.id ? "Save changes" : "Create service"}
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      Saving…
+                    </>
+                  ) : editing.id ? (
+                    "Save changes"
+                  ) : (
+                    "Create service"
+                  )}
                 </Button>
               </DialogFooter>
             </form>

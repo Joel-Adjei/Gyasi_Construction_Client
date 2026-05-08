@@ -1,12 +1,12 @@
 import { Link } from "react-router-dom";
 import { SiteLayout } from "@/components/layout/SiteLayout";
-import { ArrowRight, ArrowUpRight, ImageIcon } from "lucide-react";
+import { ArrowRight, ArrowUpRight, ImageIcon, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getServices } from "@/lib/store";
+import { useServices } from "@/hooks/useServices";
 import headerImg from "@/assets/header_bg.jpg";
 
 export default function ServicesPage() {
-  const services = getServices();
+  const { data: services = [], isLoading, isError } = useServices();
 
   return (
     <SiteLayout>
@@ -37,45 +37,59 @@ export default function ServicesPage() {
 
       <section className="py-24 bg-background">
         <div className="container mx-auto px-6 lg:px-10">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {services.map((s) => (
-              <Link
-                key={s.id}
-                to={`/services/${s.id}`}
-                className="group relative bg-card border border-border rounded-xl overflow-hidden hover:border-accent transition-all duration-300 hover:shadow-elegant hover:-translate-y-1 flex flex-col"
-              >
-                {/* Thumbnail */}
-                <div className="aspect-video overflow-hidden bg-muted">
-                  {s.images?.[0] ? (
-                    <img
-                      src={s.images[0]}
-                      alt={s.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-muted-foreground/30 bg-muted">
-                      <ImageIcon className="h-10 w-10" />
-                    </div>
-                  )}
-                </div>
+          {isLoading && (
+            <div className="flex items-center justify-center py-24">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          )}
 
-                <div className="p-6 flex flex-col flex-1">
-                  {s.category && (
-                    <span className="text-xs font-semibold uppercase tracking-wider text-accent mb-2">
-                      {s.category}
-                    </span>
-                  )}
-                  <h3 className="font-display font-semibold text-xl mb-2 group-hover:text-accent transition-colors">
-                    {s.title}
-                  </h3>
-                  <p className="text-muted-foreground text-sm leading-relaxed flex-1">{s.desc}</p>
-                  <div className="mt-5 flex items-center gap-1 text-xs font-semibold text-accent">
-                    View service <ArrowUpRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+          {isError && (
+            <div className="text-center py-24 text-muted-foreground">
+              Failed to load services. Please try again later.
+            </div>
+          )}
+
+          {!isLoading && !isError && (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {services.map((s) => (
+                <Link
+                  key={s.id}
+                  to={`/services/${s.id}`}
+                  className="group relative bg-card border border-border rounded-xl overflow-hidden hover:border-accent transition-all duration-300 hover:shadow-elegant hover:-translate-y-1 flex flex-col"
+                >
+                  <div className="aspect-video overflow-hidden bg-muted">
+                    {s.images?.[0] ? (
+                      <img
+                        src={s.images[0]}
+                        alt={s.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-muted-foreground/30 bg-muted">
+                        <ImageIcon className="h-10 w-10" />
+                      </div>
+                    )}
                   </div>
-                </div>
-              </Link>
-            ))}
-          </div>
+
+                  <div className="p-6 flex flex-col flex-1">
+                    {s.category && (
+                      <span className="text-xs font-semibold uppercase tracking-wider text-accent mb-2">
+                        {s.category}
+                      </span>
+                    )}
+                    <h3 className="font-display font-semibold text-xl mb-2 group-hover:text-accent transition-colors">
+                      {s.title}
+                    </h3>
+                    <p className="text-muted-foreground text-sm leading-relaxed flex-1">{s.desc}</p>
+                    <div className="mt-5 flex items-center gap-1 text-xs font-semibold text-accent">
+                      View service{" "}
+                      <ArrowUpRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
