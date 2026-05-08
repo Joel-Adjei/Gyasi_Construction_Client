@@ -5,12 +5,12 @@ import { z } from "zod";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import logo from "@/assets/logo.png";
-import { HardHat, Eye, EyeOff, Lock, User, ShieldCheck, ArrowRight, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail, ShieldCheck, ArrowRight, Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 
 const schema = z.object({
-  username: z.string().min(1, "Username is required"),
+  email: z.string().email("Enter a valid email"),
   password: z.string().min(1, "Password is required"),
 });
 type FormData = z.infer<typeof schema>;
@@ -34,11 +34,11 @@ export default function AdminLogin() {
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
     try {
-      await login(data.username, data.password);
+      await login(data.email, data.password);
       toast.success("Welcome back, Admin", { description: "Session started successfully." });
       navigate(from, { replace: true });
     } catch {
-      setError("password", { message: "Invalid username or password" });
+      setError("password", { message: "Invalid email or password" });
       toast.error("Authentication failed", {
         description: "Check your credentials and try again.",
       });
@@ -57,21 +57,18 @@ export default function AdminLogin() {
             "linear-gradient(145deg, oklch(0.14 0.04 260), oklch(0.20 0.04 265), oklch(0.16 0.05 260))",
         }}
       >
-        {/* Geometric accent shapes */}
         <div
-          className="absolute -top-32 -right-32 w-[480px] h-[480px] rounded-full opacity-10"
+          className="absolute -top-32 -right-32 w-120 h-120 rounded-full opacity-10"
           style={{ background: "radial-gradient(circle, oklch(0.78 0.17 65), transparent 70%)" }}
         />
         <div
-          className="absolute bottom-0 -left-24 w-[360px] h-[360px] rounded-full opacity-[0.07]"
+          className="absolute bottom-0 -left-24 w-90 h-90 rounded-full opacity-[0.07]"
           style={{ background: "radial-gradient(circle, oklch(0.78 0.17 65), transparent 70%)" }}
         />
         <div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full opacity-[0.04]"
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-175 h-175 rounded-full opacity-[0.04]"
           style={{ background: "radial-gradient(circle, oklch(0.6 0.1 240), transparent 70%)" }}
         />
-
-        {/* Grid lines overlay */}
         <div
           className="absolute inset-0 opacity-[0.04]"
           style={{
@@ -81,7 +78,6 @@ export default function AdminLogin() {
           }}
         />
 
-        {/* Logo */}
         <div className="relative flex items-center gap-3">
           <div className="h-11 w-11 rounded-xl flex items-center justify-center shadow-lg">
             <img src={logo} className="object-contain" />
@@ -96,7 +92,6 @@ export default function AdminLogin() {
           </div>
         </div>
 
-        {/* Center content */}
         <div className="relative space-y-8">
           <div className="space-y-4">
             <div
@@ -126,7 +121,6 @@ export default function AdminLogin() {
             </p>
           </div>
 
-          {/* Feature list */}
           <ul className="space-y-3">
             {[
               "Manage all services and offerings",
@@ -151,7 +145,6 @@ export default function AdminLogin() {
           </ul>
         </div>
 
-        {/* Footer note */}
         <div className="relative">
           <p className="text-xs" style={{ color: "oklch(0.45 0.02 260)" }}>
             &copy; {new Date().getFullYear()} SteelCore Construction. All rights reserved.
@@ -161,18 +154,16 @@ export default function AdminLogin() {
 
       {/* Right panel — login form */}
       <div className="flex-1 flex flex-col items-center justify-center p-8 bg-background">
-        {/* Mobile logo */}
         <div className="flex lg:hidden items-center gap-2.5 mb-10">
           <div className="h-10 w-10 rounded-xl flex items-center justify-center">
             <img src={logo} className="w-6 object-contain" />
           </div>
           <span className="font-display font-bold text-xl text-foreground">
-            Gyasi <span className="text-accent">Constrution</span>
+            Gyasi <span className="text-accent">Construction</span>
           </span>
         </div>
 
-        <div className="w-full max-w-[400px] space-y-8">
-          {/* Heading */}
+        <div className="w-full max-w-100 space-y-8">
           <div className="space-y-2">
             <h2 className="font-display font-bold text-3xl text-foreground">Sign in</h2>
             <p className="text-sm text-muted-foreground">
@@ -180,33 +171,32 @@ export default function AdminLogin() {
             </p>
           </div>
 
-          {/* Form */}
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
-            {/* Username */}
+            {/* Email */}
             <div className="space-y-1.5">
-              <label htmlFor="username" className="text-sm font-semibold text-foreground">
-                Username
+              <label htmlFor="email" className="text-sm font-semibold text-foreground">
+                Email
               </label>
               <div className="relative">
-                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 <input
-                  id="username"
-                  type="text"
-                  autoComplete="username"
-                  placeholder="Enter username"
-                  {...register("username")}
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="admin@example.com"
+                  {...register("email")}
                   className={cn(
                     "w-full pl-10 pr-4 py-2.5 rounded-lg border bg-card text-sm font-medium transition-colors outline-none",
                     "placeholder:text-muted-foreground/60",
                     "focus:border-accent focus:ring-2 focus:ring-accent/20",
-                    errors.username
+                    errors.email
                       ? "border-destructive focus:border-destructive focus:ring-destructive/20"
                       : "border-input hover:border-accent/50",
                   )}
                 />
               </div>
-              {errors.username && (
-                <p className="text-xs font-medium text-destructive">{errors.username.message}</p>
+              {errors.email && (
+                <p className="text-xs font-medium text-destructive">{errors.email.message}</p>
               )}
             </div>
 
@@ -246,7 +236,6 @@ export default function AdminLogin() {
               )}
             </div>
 
-            {/* Submit */}
             <button
               type="submit"
               disabled={isSubmitting}
@@ -273,30 +262,6 @@ export default function AdminLogin() {
               )}
             </button>
           </form>
-
-          {/* Credentials hint */}
-          <div
-            className="flex items-start gap-3 p-4 rounded-xl border text-xs"
-            style={{
-              background: "oklch(0.78 0.17 65 / 0.06)",
-              borderColor: "oklch(0.78 0.17 65 / 0.2)",
-            }}
-          >
-            <ShieldCheck
-              className="h-4 w-4 mt-0.5 shrink-0"
-              style={{ color: "oklch(0.65 0.14 65)" }}
-            />
-            <div className="space-y-0.5" style={{ color: "oklch(0.45 0.02 260)" }}>
-              <p className="font-semibold text-foreground">Default credentials</p>
-              <p>
-                Username: <span className="font-mono font-semibold text-foreground">admin</span>
-              </p>
-              <p>
-                Password:{" "}
-                <span className="font-mono font-semibold text-foreground">steelcore2024</span>
-              </p>
-            </div>
-          </div>
 
           <p className="text-center text-xs text-muted-foreground">
             &larr;{" "}

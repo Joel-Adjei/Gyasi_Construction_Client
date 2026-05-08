@@ -6,18 +6,16 @@ import {
   useCallback,
   type ReactNode,
 } from "react";
+import { api, TOKEN_KEY, setToken, clearToken } from "@/lib/api";
+import type { AuthUser } from "@/lib/type";
 
-const SESSION_KEY = "sc_admin_session";
-
-const CREDENTIALS = {
-  username: "admin",
-  password: "steelcore2024",
-};
+const USER_KEY = "sc_admin_user";
 
 interface AuthContextValue {
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  user: AuthUser | null;
+  login: (email: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -26,44 +24,40 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<AuthUser | null>(null);
 
   useEffect(() => {
-    const session = localStorage.getItem(SESSION_KEY);
-    if (session) {
+    const token = localStorage.getItem(TOKEN_KEY);
+    const stored = localStorage.getItem(USER_KEY);
+    if (token && stored) {
       try {
-        const { expires } = JSON.parse(session);
-        if (Date.now() < expires) {
-          setIsAuthenticated(true);
-        } else {
-          localStorage.removeItem(SESSION_KEY);
-        }
+        setUser(JSON.parse(stored));
+        setIsAuthenticated(true);
       } catch {
-        localStorage.removeItem(SESSION_KEY);
+        clearToken();
+        localStorage.removeItem(USER_KEY);
       }
     }
     setIsLoading(false);
   }, []);
 
-  const login = useCallback(async (username: string, password: string) => {
-    await new Promise((r) => setTimeout(r, 800));
-    if (
-      username.toLowerCase() !== CREDENTIALS.username ||
-      password !== CREDENTIALS.password
-    ) {
-      throw new Error("Invalid credentials");
-    }
-    const session = { expires: Date.now() + 8 * 60 * 60 * 1000 };
-    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  const login = useCallback(async (email: string, password: string) => {
+    const { data } = await api.post<AuthUser>("/auth/login", { email, password });
+    setToken(data.token);
+    localStorage.setItem(USER_KEY, JSON.stringify(data));
+    setUser(data);
     setIsAuthenticated(true);
   }, []);
 
   const logout = useCallback(() => {
-    localStorage.removeItem(SESSION_KEY);
+    clearToken();
+    localStorage.removeItem(USER_KEY);
+    setUser(null);
     setIsAuthenticated(false);
   }, []);
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, isLoading, user, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
