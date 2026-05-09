@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Plus,
   Pencil,
@@ -45,36 +45,50 @@ import type { Service, ServiceProcess } from "@/lib/type";
 
 const MAX_IMAGES = 3;
 
+type ImageSlotData = {
+  existingUrl: string | null;
+  pendingFile: File | null;
+  previewUrl: string | null;
+};
+
+const emptySlots = (): ImageSlotData[] =>
+  Array(MAX_IMAGES)
+    .fill(null)
+    .map(() => ({ existingUrl: null, pendingFile: null, previewUrl: null }));
+
 function ImageSlot({
-  url,
+  displayUrl,
+  isPending,
   index,
-  uploading,
-  onUpload,
+  disabled,
+  onSelect,
   onRemove,
 }: {
-  url?: string;
+  displayUrl?: string;
+  isPending?: boolean;
   index: number;
-  uploading: boolean;
-  onUpload: (file: File) => void;
+  disabled: boolean;
+  onSelect: (file: File) => void;
   onRemove: () => void;
 }) {
   const ref = useRef<HTMLInputElement>(null);
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) onUpload(file);
+    if (file) onSelect(file);
     e.target.value = "";
   };
 
-  if (url) {
+  if (displayUrl) {
     return (
-      <div className="relative group aspect-[4/3] rounded-xl overflow-hidden border border-border bg-muted">
-        <img src={url} alt={`Image ${index + 1}`} className="w-full h-full object-cover" />
+      <div className="relative group aspect-4/3 rounded-xl overflow-hidden border border-border bg-muted">
+        <img src={displayUrl} alt={`Image ${index + 1}`} className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
           <button
             type="button"
             onClick={onRemove}
-            className="h-9 w-9 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:bg-destructive/90 transition-colors shadow-lg"
+            disabled={disabled}
+            className="h-9 w-9 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:bg-destructive/90 transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <X className="h-4 w-4" />
           </button>
@@ -82,6 +96,11 @@ function ImageSlot({
         {index === 0 && (
           <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md text-xs font-semibold bg-black/60 text-white backdrop-blur">
             Primary
+          </div>
+        )}
+        {isPending && (
+          <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md text-xs font-semibold bg-amber-500/90 text-white backdrop-blur">
+            Pending
           </div>
         )}
       </div>
@@ -94,22 +113,13 @@ function ImageSlot({
       <button
         type="button"
         onClick={() => ref.current?.click()}
-        disabled={uploading}
-        className="aspect-[4/3] rounded-xl border-2 border-dashed border-border hover:border-accent bg-muted/40 hover:bg-accent/5 transition-all flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-accent disabled:opacity-50 disabled:cursor-not-allowed"
+        disabled={disabled}
+        className="aspect-4/3 rounded-xl border-2 border-dashed border-border hover:border-accent bg-muted/40 hover:bg-accent/5 transition-all flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-accent disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {uploading ? (
-          <>
-            <Loader2 className="h-6 w-6 animate-spin" />
-            <span className="text-xs font-medium">Uploading…</span>
-          </>
-        ) : (
-          <>
-            <ImagePlus className="h-6 w-6" />
-            <span className="text-xs font-medium">
-              {index === 0 ? "Add primary image" : `Add image ${index + 1}`}
-            </span>
-          </>
-        )}
+        <ImagePlus className="h-6 w-6" />
+        <span className="text-xs font-medium">
+          {index === 0 ? "Add primary image" : `Add image ${index + 1}`}
+        </span>
       </button>
     </>
   );
@@ -127,13 +137,25 @@ export default function AdminServices() {
   const [editing, setEditing] = useState<EditingService | null>(null);
   const [open, setOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [uploadingSlot, setUploadingSlot] = useState<number | null>(null);
+  const [imageSlots, setImageSlots] = useState<ImageSlotData[]>(emptySlots());
+  const [isUploading, setIsUploading] = useState(false);
 
-  const isSaving = creating || updating;
+  const isSaving = creating || updating || isUploading;
   const cloudinaryReady =
-    settings?.cloudinaryCloudName && settings?.cloudinaryUploadPreset;
+    import.meta.env.VITE_CLOUDINARY_CLOUD_NAME && settings?.cloudinaryUploadPreset;
+
+  // Revoke object URLs when the dialog closes to avoid memory leaks
+  useEffect(() => {
+    if (!open) {
+      setImageSlots((prev) => {
+        prev.forEach((s) => s.previewUrl && URL.revokeObjectURL(s.previewUrl));
+        return emptySlots();
+      });
+    }
+  }, [open]);
 
   const startNew = () => {
+    setImageSlots(emptySlots());
     setEditing({
       title: "",
       desc: "",
@@ -152,6 +174,11 @@ export default function AdminServices() {
   };
 
   const startEdit = (s: Service) => {
+    const slots = emptySlots();
+    s.images?.forEach((url, i) => {
+      if (i < MAX_IMAGES) slots[i].existingUrl = url;
+    });
+    setImageSlots(slots);
     setEditing({
       ...s,
       longDesc: s.longDesc ?? "",
@@ -165,43 +192,25 @@ export default function AdminServices() {
     setOpen(true);
   };
 
-  const handleImageUpload = async (file: File, slot: number) => {
-    if (!editing) return;
-    if (!cloudinaryReady) {
-      toast.error("Cloudinary not configured", {
-        description: "Go to Settings → Cloudinary Integration to add your credentials.",
-      });
-      return;
-    }
-    setUploadingSlot(slot);
-    try {
-      const url = await uploadToCloudinary(
-        file,
-        settings!.cloudinaryCloudName,
-        settings!.cloudinaryUploadPreset,
-      );
-      const imgs = [...(editing.images ?? [])];
-      imgs[slot] = url;
-      setEditing({ ...editing, images: imgs.filter(Boolean) });
-      toast.success("Image uploaded");
-    } catch {
-      toast.error("Upload failed", {
-        description: "Check your Cloudinary settings and try again.",
-      });
-    } finally {
-      setUploadingSlot(null);
-    }
+  const handleImageSelect = (file: File, slot: number) => {
+    setImageSlots((prev) => {
+      const next = [...prev];
+      if (next[slot].previewUrl) URL.revokeObjectURL(next[slot].previewUrl!);
+      next[slot] = { ...next[slot], pendingFile: file, previewUrl: URL.createObjectURL(file) };
+      return next;
+    });
   };
 
   const removeImage = (slot: number) => {
-    if (!editing) return;
-    const imgs = [...(editing.images ?? [])];
-    imgs.splice(slot, 1);
-    setEditing({ ...editing, images: imgs });
+    setImageSlots((prev) => {
+      const next = [...prev];
+      if (next[slot].previewUrl) URL.revokeObjectURL(next[slot].previewUrl!);
+      next[slot] = { existingUrl: null, pendingFile: null, previewUrl: null };
+      return next;
+    });
   };
 
-  const addFeature = () =>
-    setEditing((e) => e && { ...e, features: [...(e.features ?? []), ""] });
+  const addFeature = () => setEditing((e) => e && { ...e, features: [...(e.features ?? []), ""] });
 
   const updateFeature = (i: number, val: string) =>
     setEditing((e) => {
@@ -228,12 +237,50 @@ export default function AdminServices() {
   const removeStep = (i: number) =>
     setEditing((e) => e && { ...e, process: (e.process ?? []).filter((_, j) => j !== i) });
 
-  const save = (e: React.FormEvent<HTMLFormElement>) => {
+  const save = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!editing) return;
 
+    const hasPending = imageSlots.some((s) => s.pendingFile !== null);
+    if (hasPending && !cloudinaryReady) {
+      toast.error("Cloudinary not configured", {
+        description: "Go to Settings → Cloudinary Integration to add your credentials.",
+      });
+      return;
+    }
+
+    // Upload pending files and collect final image URLs
+    let finalImages: string[] = [];
+    if (hasPending) {
+      setIsUploading(true);
+      try {
+        for (const slot of imageSlots) {
+          if (slot.pendingFile) {
+            const url = await uploadToCloudinary(
+              slot.pendingFile,
+              import.meta.env.VITE_CLOUDINARY_CLOUD_NAME as string,
+              settings!.cloudinaryUploadPreset,
+            );
+            finalImages.push(url);
+          } else if (slot.existingUrl) {
+            finalImages.push(slot.existingUrl);
+          }
+        }
+      } catch {
+        toast.error("Image upload failed", {
+          description: "Check your Cloudinary settings and try again.",
+        });
+        setIsUploading(false);
+        return;
+      }
+      setIsUploading(false);
+    } else {
+      finalImages = imageSlots.map((s) => s.existingUrl).filter(Boolean) as string[];
+    }
+
     const payload = {
       ...editing,
+      images: finalImages,
       features: (editing.features ?? []).filter((f) => f.trim()),
       process: (editing.process ?? []).filter((p) => p.title.trim()),
       projectsCompleted: Number(editing.projectsCompleted) || 0,
@@ -270,7 +317,7 @@ export default function AdminServices() {
     setDeleteId(null);
   };
 
-  const slots = Array.from({ length: MAX_IMAGES });
+  const filledSlotCount = imageSlots.filter((s) => s.previewUrl || s.existingUrl).length;
 
   return (
     <div>
@@ -300,9 +347,15 @@ export default function AdminServices() {
               <thead className="bg-muted/50 border-b border-border">
                 <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
                   <th className="px-3 sm:px-6 py-3 sm:py-4 font-semibold">Service</th>
-                  <th className="px-3 sm:px-6 py-3 sm:py-4 font-semibold hidden md:table-cell">Description</th>
-                  <th className="px-3 sm:px-6 py-3 sm:py-4 font-semibold hidden lg:table-cell">Date</th>
-                  <th className="px-3 sm:px-6 py-3 sm:py-4 font-semibold hidden xs:table-cell">Status</th>
+                  <th className="px-3 sm:px-6 py-3 sm:py-4 font-semibold hidden md:table-cell">
+                    Description
+                  </th>
+                  <th className="px-3 sm:px-6 py-3 sm:py-4 font-semibold hidden lg:table-cell">
+                    Date
+                  </th>
+                  <th className="px-3 sm:px-6 py-3 sm:py-4 font-semibold hidden xs:table-cell">
+                    Status
+                  </th>
                   <th className="px-3 sm:px-6 py-3 sm:py-4 font-semibold text-right">Actions</th>
                 </tr>
               </thead>
@@ -320,9 +373,13 @@ export default function AdminServices() {
                           )}
                         </div>
                         <div className="min-w-0">
-                          <div className="font-medium truncate max-w-[120px] sm:max-w-none">{s.title}</div>
+                          <div className="font-medium truncate max-w-[120px] sm:max-w-none">
+                            {s.title}
+                          </div>
                           {s.category && (
-                            <div className="text-xs text-muted-foreground truncate">{s.category}</div>
+                            <div className="text-xs text-muted-foreground truncate">
+                              {s.category}
+                            </div>
                           )}
                           {s.featured ? (
                             <span className="inline-flex items-center gap-1 mt-0.5 px-1.5 py-0.5 rounded-full text-xs font-medium bg-accent/15 text-accent sm:hidden">
@@ -399,22 +456,26 @@ export default function AdminServices() {
                   )}
                 </div>
                 <div className="grid grid-cols-3 gap-3">
-                  {slots.map((_, i) => (
+                  {imageSlots.map((slot, i) => (
                     <ImageSlot
                       key={i}
                       index={i}
-                      url={editing.images?.[i]}
-                      uploading={uploadingSlot === i}
-                      onUpload={(file) => handleImageUpload(file, i)}
+                      displayUrl={slot.previewUrl ?? slot.existingUrl ?? undefined}
+                      isPending={!!slot.pendingFile}
+                      disabled={isSaving}
+                      onSelect={(file) => handleImageSelect(file, i)}
                       onRemove={() => removeImage(i)}
                     />
                   ))}
                 </div>
-                {(editing.images?.length ?? 0) > 0 && (
+                {filledSlotCount > 0 && (
                   <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                     <Upload className="h-3 w-3" />
-                    {editing.images.length} of {MAX_IMAGES} image
-                    {editing.images.length !== 1 ? "s" : ""} added
+                    {filledSlotCount} of {MAX_IMAGES} image
+                    {filledSlotCount !== 1 ? "s" : ""} added
+                    {imageSlots.some((s) => s.pendingFile) && (
+                      <span className="text-amber-600">(will upload on save)</span>
+                    )}
                   </p>
                 )}
               </div>
@@ -603,7 +664,9 @@ export default function AdminServices() {
                   <Label htmlFor="featured" className="cursor-pointer font-semibold">
                     Featured service
                   </Label>
-                  <p className="text-xs text-muted-foreground mt-0.5">Highlighted on the homepage</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Highlighted on the homepage
+                  </p>
                 </div>
                 <Switch
                   id="featured"
@@ -618,10 +681,15 @@ export default function AdminServices() {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={uploadingSlot !== null || isSaving}
+                  disabled={isSaving}
                   className="bg-accent text-accent-foreground hover:bg-accent/90"
                 >
-                  {isSaving ? (
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      Uploading images…
+                    </>
+                  ) : creating || updating ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-1 animate-spin" />
                       Saving…
