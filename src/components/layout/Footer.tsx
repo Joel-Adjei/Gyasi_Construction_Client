@@ -16,7 +16,7 @@ export function Footer() {
               <HardHat className="h-5 w-5 text-primary" strokeWidth={2.5} />
             </div>
             <div className="font-display font-bold text-xl">
-              STEELCORE<span className="text-accent">.</span>
+              Gyasi<span className="text-accent">Construction</span>
             </div>
           </div>
           <p className="text-primary-foreground/70 max-w-md leading-relaxed">
@@ -55,11 +55,11 @@ export function Footer() {
                 Contact
               </Link>
             </li>
-            <li>
+            {/* <li>
               <Link to="/admin" className="hover:text-accent transition">
                 Admin
               </Link>
-            </li>
+            </li> */}
           </ul>
         </div>
         <div>
